@@ -145,8 +145,8 @@ public final class Heads extends JavaPlugin {
         return new GuiElement[] {
                 new GuiPageElement('f', new ItemStack(Material.ARROW), GuiPageElement.PageAction.FIRST, "First page"),
                 new GuiPageElement('l', new ItemStack(Material.ARROW), GuiPageElement.PageAction.LAST, "Last page (%pages%)"),
-                new GuiPageElement('p', new ItemStack(Material.OAK_SIGN), GuiPageElement.PageAction.PREVIOUS, "Previous page (%prevpage%)"),
-                new GuiPageElement('n', new ItemStack(Material.OAK_SIGN), GuiPageElement.PageAction.NEXT, "Next page (%nextpage%)"),
+                new GuiPageElement('p', new ItemStack(Material.PAPER), GuiPageElement.PageAction.PREVIOUS, "Previous page (%prevpage%)"),
+                new GuiPageElement('n', new ItemStack(Material.PAPER), GuiPageElement.PageAction.NEXT, "Next page (%nextpage%)"),
                 new StaticGuiElement('b', new ItemStack(Material.RED_WOOL), click -> {
                     if (!InventoryGui.goBack(click.getEvent().getWhoClicked())) {
                         getServer().getScheduler().runTask(this, () -> click.getEvent().getWhoClicked().closeInventory());
