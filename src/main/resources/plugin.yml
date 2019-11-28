@@ -1,0 +1,20 @@
+name: MbHeads
+version: ${project.version}
+main: de.minebench.heads.Heads
+api-version: 1.13
+authors: [Phoenix616]
+description: GUI for heads
+commands:
+  heads:
+    aliases:
+    - mbheads
+    permission: mbheads.command
+    usage: /<command> reload|search [search term]
+    description: Main plugin command to open the GUI
+permissions:
+  mbheads.command:
+    default: op
+  mbheads.command.search:
+    default: op
+  mbheads.command.reload:
+    default: op
