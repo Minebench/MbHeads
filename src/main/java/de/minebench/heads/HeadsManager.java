@@ -63,6 +63,9 @@ public class HeadsManager {
 
     public Collection<Head> findHeads(String query) {
         query = query.toLowerCase();
+        if (query.startsWith("id:")) {
+            query = query.substring(3);
+        }
         Set<Head> heads = new TreeSet<>();
 
         for (Category category : categories.values()) {
@@ -72,7 +75,7 @@ public class HeadsManager {
         }
 
         for (Head head : getHeads()) {
-            if (head.getName().toLowerCase().contains(query)) {
+            if (head.getName().toLowerCase().contains(query) || head.getId().toLowerCase().contains(query)) {
                 heads.add(head);
                 continue;
             }

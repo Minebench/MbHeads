@@ -8,6 +8,8 @@ commands:
   heads:
     aliases:
     - mbheads
+    - headdatabase
+    - hdb
     permission: mbheads.command
     usage: /<command> reload|search [search term]
     description: Main plugin command to open the GUI
