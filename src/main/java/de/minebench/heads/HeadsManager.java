@@ -21,7 +21,7 @@ package de.minebench.heads;
 import de.minebench.heads.provider.HeadsProvider;
 
 import java.util.Collection;
-import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -31,14 +31,14 @@ public class HeadsManager {
 
     private final Heads plugin;
 
-    private Set<Head> heads = new LinkedHashSet<>();
+    private Map<String, Head> heads = new LinkedHashMap<>();
     private Map<String, Category> categories = new TreeMap<>();
 
     public HeadsManager(Heads plugin, HeadsProvider... providers) {
         this.plugin = plugin;
         for (HeadsProvider provider : providers) {
             provider.loadHeads(head -> {
-                heads.add(head);
+                heads.put(head.getId(), head);
                 Category category = categories.get(head.getCategory().toLowerCase());
                 if (category == null) {
                     category = new Category(head.getCategory());
@@ -57,16 +57,21 @@ public class HeadsManager {
         return categories.get(id.toLowerCase());
     }
 
-    public Collection<Head> getHeads() {
+    public Map<String, Head> getHeads() {
         return heads;
     }
 
     public Collection<Head> findHeads(String query) {
         query = query.toLowerCase();
-        if (query.startsWith("id:")) {
-            query = query.substring(3);
-        }
+        boolean isId = query.startsWith("id:");
         Set<Head> heads = new TreeSet<>();
+        if (isId) {
+            Head head = getHeads().get(query.substring(3));
+            if (head != null) {
+                heads.add(head);
+            }
+            return heads;
+        }
 
         for (Category category : categories.values()) {
             if (category.getId().toLowerCase().contains(query)) {
@@ -74,7 +79,7 @@ public class HeadsManager {
             }
         }
 
-        for (Head head : getHeads()) {
+        for (Head head : getHeads().values()) {
             if (head.getName().toLowerCase().contains(query) || head.getId().toLowerCase().contains(query)) {
                 heads.add(head);
                 continue;
