@@ -18,7 +18,8 @@ package de.minebench.heads;
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import de.minebench.heads.provider.HeadDatabaseCsvProvider;
+import de.minebench.heads.provider.CsvProvider;
+import de.minebench.heads.provider.HeadsProvider;
 import de.themoep.inventorygui.GuiElement;
 import de.themoep.inventorygui.GuiElementGroup;
 import de.themoep.inventorygui.GuiPageElement;
@@ -29,6 +30,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
@@ -36,9 +38,13 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.function.Function;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 public final class Heads extends JavaPlugin {
@@ -96,7 +102,28 @@ public final class Heads extends JavaPlugin {
     public void loadConfig() {
         saveDefaultConfig();
         reloadConfig();
-        manager = new HeadsManager(this, new HeadDatabaseCsvProvider(this)); // TODO: Make configurable and support multiple providers
+        List<HeadsProvider> providers = new ArrayList<>();
+        for (String provider : getConfig().getConfigurationSection("providers").getKeys(false)) {
+            ConfigurationSection providerConfig = getConfig().getConfigurationSection("providers." + provider);
+            try {
+                HeadsProvider.Type type = HeadsProvider.Type.valueOf(providerConfig.getString("type").toUpperCase());
+                switch (type) {
+                    case CSV:
+                        providers.add(new CsvProvider(this,
+                                new File(getDataFolder(), providerConfig.getString("file")),
+                                providerConfig.getString("separator", ";").charAt(0),
+                                providerConfig.getStringList("mapping"),
+                                providerConfig.getString("tag-splitter")
+                        ));
+                        break;
+                    default:
+                        getLogger().log(Level.SEVERE, "Unsupported provider " + type);
+                }
+            } catch (IllegalArgumentException e) {
+                getLogger().log(Level.SEVERE, "Unknown provider " + getConfig().getString("provider"));
+            }
+        }
+        manager = new HeadsManager(this, providers.toArray(new HeadsProvider[0]));
         gui = new InventoryGui(this, "Select category", GUI_SETUP, getNavNar());
         GuiElementGroup headGroup = new GuiElementGroup('h');
         gui.addElement(headGroup);

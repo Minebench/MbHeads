@@ -24,4 +24,8 @@ import java.util.function.Consumer;
 
 public interface HeadsProvider {
     void loadHeads(Consumer<Head> onLoad);
+
+    public enum Type {
+        CSV;
+    }
 }

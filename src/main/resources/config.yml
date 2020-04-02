@@ -1,0 +1,7 @@
+providers:
+  csv-provider:
+    type: csv
+    file: "Custom-Head-DB.csv"
+    separator: ";"
+    mapping: [category,id,name,texture,tags]
+    tag-splitter: "\\|"

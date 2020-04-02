@@ -18,7 +18,6 @@ package de.minebench.heads.provider;
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import com.opencsv.CSVParser;
 import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
@@ -26,45 +25,52 @@ import com.opencsv.exceptions.CsvValidationException;
 import de.minebench.heads.Head;
 import de.minebench.heads.Heads;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Optional;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
-public class HeadDatabaseCsvProvider implements HeadsProvider {
+public class CsvProvider implements HeadsProvider {
 
     private final Heads plugin;
+    private final File file;
+    private final char separator;
+    private final Map<String, Integer> mapping;
 
-    private final Pattern tagPattern = Pattern.compile("\\|");
+    private final Pattern tagPattern;
 
-    public HeadDatabaseCsvProvider(Heads plugin) {
+    public CsvProvider(Heads plugin, File file, char separator, List<String> mapping, String tagPattern) {
         this.plugin = plugin;
+        this.file = file;
+        this.separator = separator;
+        this.mapping = new LinkedHashMap<>();
+        for (int i = 0; i < mapping.size(); i++) {
+            this.mapping.put(mapping.get(i).toLowerCase(), i);
+        }
+        this.tagPattern = Pattern.compile(tagPattern);
     }
 
     @Override
     public void loadHeads(Consumer<Head> onLoad) {
         int i = 0;
         int failed = 0;
-        try (Stream<Path> files = Files.walk(plugin.getDataFolder().toPath())) {
-            Optional<Path> csvFile = files
-                    .filter(f -> f.getFileName().toString().startsWith("Custom-Head-DB") && f.getFileName().toString().endsWith(".csv"))
-                    .max(Comparator.naturalOrder());
-            if (csvFile.isPresent()) {
-                CSVReader reader = new CSVReaderBuilder(Files.newBufferedReader(csvFile.get()))
-                        .withCSVParser(new CSVParserBuilder().withSeparator(';').build())
+        try {
+            if (file.exists() && file.isFile()) {
+                CSVReader reader = new CSVReaderBuilder(Files.newBufferedReader(file.toPath()))
+                        .withCSVParser(new CSVParserBuilder().withSeparator(separator).build())
                         .build();
                 String[] line;
                 while ((line = reader.readNext()) != null) {
                     if (line.length > 3) {
-                        Head head = new Head(line[1], line[2], line[0], line[3]);
-                        if (line.length > 5) {
-                            for (String tag : tagPattern.split(line[5])) {
+                        Head head = new Head(line[mapping.get("id")], line[mapping.get("name")], line[mapping.get("category")], line[mapping.get("texture")]);
+                        if (line.length > mapping.getOrDefault("tags", mapping.size())) {
+                            for (String tag : tagPattern.split(line[mapping.getOrDefault("tags", mapping.size() + 1)])) {
                                 head.addTag(tag);
                             }
                         }
@@ -79,7 +85,7 @@ public class HeadDatabaseCsvProvider implements HeadsProvider {
                     }
                 }
             } else {
-                plugin.getLogger().log(Level.SEVERE, "No heads database file found!");
+                plugin.getLogger().log(Level.SEVERE, "No heads database file at " + file.getPath() + " found!");
             }
         } catch (IOException | CsvValidationException e) {
             e.printStackTrace();
