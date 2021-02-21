@@ -124,7 +124,7 @@ public final class Heads extends JavaPlugin {
             }
         }
         manager = new HeadsManager(this, providers.toArray(new HeadsProvider[0]));
-        gui = new InventoryGui(this, "Select category", GUI_SETUP, getNavNar());
+        gui = new InventoryGui(this, "Select category", GUI_SETUP, getNavBar());
         GuiElementGroup headGroup = new GuiElementGroup('h');
         gui.addElement(headGroup);
         for (Category category : manager.getCategories()) {
@@ -159,7 +159,7 @@ public final class Heads extends JavaPlugin {
     }
 
     private InventoryGui buildGui(String title, Collection<Head> heads) {
-        InventoryGui newGui = new InventoryGui(this, title, GUI_SETUP, getNavNar());
+        InventoryGui newGui = new InventoryGui(this, title, GUI_SETUP, getNavBar());
         GuiElementGroup headGroup = new GuiElementGroup('h');
         newGui.addElement(headGroup);
         for (Head head : heads) {
@@ -168,7 +168,7 @@ public final class Heads extends JavaPlugin {
         return newGui;
     }
 
-    private GuiElement[] getNavNar() {
+    private GuiElement[] getNavBar() {
         return new GuiElement[] {
                 new GuiPageElement('f', new ItemStack(Material.ARROW), GuiPageElement.PageAction.FIRST, "First page"),
                 new GuiPageElement('l', new ItemStack(Material.ARROW), GuiPageElement.PageAction.LAST, "Last page (%pages%)"),
