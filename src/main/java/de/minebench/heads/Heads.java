@@ -20,12 +20,13 @@ package de.minebench.heads;
 
 import de.minebench.heads.provider.CsvProvider;
 import de.minebench.heads.provider.HeadsProvider;
+import de.minebench.heads.provider.JsonProvider;
 import de.themoep.inventorygui.GuiElement;
 import de.themoep.inventorygui.GuiElementGroup;
 import de.themoep.inventorygui.GuiPageElement;
 import de.themoep.inventorygui.InventoryGui;
 import de.themoep.inventorygui.StaticGuiElement;
-import org.apache.commons.lang.WordUtils;
+import org.apache.commons.text.WordUtils;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
@@ -38,7 +39,11 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -66,7 +71,7 @@ public final class Heads extends JavaPlugin {
     @Override
     public void onEnable() {
         headElementCreator = head -> new StaticGuiElement('h', head.getItemStack(), click -> {
-            if (click.getType() == ClickType.NUMBER_KEY || click.getEvent().isShiftClick()) {
+            if (click.getType() == ClickType.NUMBER_KEY || click.getType().isShiftClick()) {
                 return true;
             }
             ItemStack clone = head.getItemStack().clone();
@@ -80,11 +85,11 @@ public final class Heads extends JavaPlugin {
             }
             clone.setItemMeta(cloneMeta);
             if (click.getType() == ClickType.DROP || click.getType() == ClickType.CONTROL_DROP) {
-                click.getEvent().getWhoClicked().getWorld()
-                        .dropItemNaturally(click.getEvent().getWhoClicked().getLocation(), clone)
-                        .setThrower(click.getEvent().getWhoClicked().getUniqueId());
+                click.getWhoClicked().getWorld()
+                        .dropItemNaturally(click.getWhoClicked().getLocation(), clone)
+                        .setThrower(click.getWhoClicked().getUniqueId());
             } else {
-                click.getEvent().getWhoClicked().getInventory().addItem(clone);
+                click.getWhoClicked().getInventory().addItem(clone);
             }
             return true;
         },
@@ -102,40 +107,76 @@ public final class Heads extends JavaPlugin {
     public void loadConfig() {
         saveDefaultConfig();
         reloadConfig();
-        List<HeadsProvider> providers = new ArrayList<>();
-        for (String provider : getConfig().getConfigurationSection("providers").getKeys(false)) {
-            ConfigurationSection providerConfig = getConfig().getConfigurationSection("providers." + provider);
-            try {
-                HeadsProvider.Type type = HeadsProvider.Type.valueOf(providerConfig.getString("type").toUpperCase());
-                switch (type) {
-                    case CSV:
-                        providers.add(new CsvProvider(this,
-                                new File(getDataFolder(), providerConfig.getString("file")),
-                                providerConfig.getString("separator", ";").charAt(0),
-                                providerConfig.getStringList("mapping"),
-                                providerConfig.getString("tag-splitter")
-                        ));
-                        break;
-                    default:
-                        getLogger().log(Level.SEVERE, "Unsupported provider " + type);
+        getServer().getScheduler().runTaskAsynchronously(this, () -> {
+            List<HeadsProvider> providers = new ArrayList<>();
+            for (String provider : getConfig().getConfigurationSection("providers").getKeys(false)) {
+                ConfigurationSection providerConfig = getConfig().getConfigurationSection("providers." + provider);
+                try {
+                    HeadsProvider.Type type = HeadsProvider.Type.valueOf(providerConfig.getString("type").toUpperCase());
+                    switch (type) {
+                        case JSON:
+                            File jsonFile = new File(getDataFolder(), providerConfig.getString("file"));
+                            if (!jsonFile.exists() && providerConfig.isString("url")) {
+                                getLogger().log(Level.INFO, "Could not find " + jsonFile + ". Downloading one from configured URL...");
+                                if (!downloadFile(providerConfig.getString("url"), jsonFile)) {
+                                    continue;
+                                }
+                            }
+                            providers.add(new JsonProvider(this, jsonFile));
+                            break;
+                        case CSV:
+                            providers.add(new CsvProvider(this,
+                                    new File(getDataFolder(), providerConfig.getString("file")),
+                                    providerConfig.getString("separator", ";").charAt(0),
+                                    providerConfig.getStringList("mapping"),
+                                    providerConfig.getString("tag-splitter")
+                            ));
+                            break;
+                        default:
+                            getLogger().log(Level.SEVERE, "Unsupported provider " + type);
+                    }
+                } catch (IllegalArgumentException e) {
+                    getLogger().log(Level.SEVERE, "Unknown provider " + getConfig().getString("provider"));
                 }
-            } catch (IllegalArgumentException e) {
-                getLogger().log(Level.SEVERE, "Unknown provider " + getConfig().getString("provider"));
             }
-        }
-        manager = new HeadsManager(this, providers.toArray(new HeadsProvider[0]));
-        gui = new InventoryGui(this, "Select category", GUI_SETUP, getNavBar());
-        GuiElementGroup headGroup = new GuiElementGroup('h');
-        gui.addElement(headGroup);
-        for (Category category : manager.getCategories()) {
-            headGroup.addElement(getCategoryElement(category));
+            getServer().getScheduler().runTask(Heads.this, () -> {
+                manager = new HeadsManager(providers.toArray(new HeadsProvider[0]));
+                gui = new InventoryGui(this, "Select category", GUI_SETUP, getNavBar());
+                GuiElementGroup headGroup = new GuiElementGroup('h');
+                gui.addElement(headGroup);
+                for (Category category : manager.getCategories()) {
+                    headGroup.addElement(getCategoryElement(category));
+                }
+            });
+        });
+    }
+
+    private boolean downloadFile(String url, File file) {
+        try (BufferedInputStream in = new BufferedInputStream(new URL(url).openStream());
+             FileOutputStream fileOutputStream = new FileOutputStream(file)) {
+            byte dataBuffer[] = new byte[1024];
+            int bytesRead;
+            long readSinceLastLog = 0;
+            while ((bytesRead = in.read(dataBuffer, 0, 1024)) != -1) {
+                fileOutputStream.write(dataBuffer, 0, bytesRead);
+                readSinceLastLog += bytesRead;
+                if (readSinceLastLog >= 1024 * 1024) {
+                    getLogger().log(Level.INFO, "Downloaded " + (file.length() / 1024 / 1024) + " MB...");
+                    readSinceLastLog = 0;
+                }
+            }
+            getLogger().log(Level.INFO, "Downloaded " + url + " to " + file.getAbsolutePath() + " (" + (file.length() / 1024 / 1024) + " MB)");
+            return true;
+        } catch (IOException e) {
+            getLogger().log(Level.SEVERE, "Could not download file from " + url + " to " + file, e);
+            return false;
         }
     }
 
     private GuiElement getCategoryElement(Category category) {
         InventoryGui categoryGui = buildGui(WordUtils.capitalizeFully(category.getId()), category.getHeads());
         return new StaticGuiElement('h', category.getIcon(), click -> {
-            categoryGui.show(click.getEvent().getWhoClicked());
+            categoryGui.show(click.getWhoClicked());
             return true;
         }, ChatColor.YELLOW + WordUtils.capitalizeFully(category.getId()), category.getHeads().size() + " Heads");
     }
@@ -175,8 +216,8 @@ public final class Heads extends JavaPlugin {
                 new GuiPageElement('p', new ItemStack(Material.PAPER), GuiPageElement.PageAction.PREVIOUS, "Previous page (%prevpage%)"),
                 new GuiPageElement('n', new ItemStack(Material.PAPER), GuiPageElement.PageAction.NEXT, "Next page (%nextpage%)"),
                 new StaticGuiElement('b', new ItemStack(Material.RED_WOOL), click -> {
-                    if (!InventoryGui.goBack(click.getEvent().getWhoClicked())) {
-                        getServer().getScheduler().runTask(this, () -> click.getEvent().getWhoClicked().closeInventory());
+                    if (!InventoryGui.goBack(click.getWhoClicked())) {
+                        getServer().getScheduler().runTask(this, () -> click.getWhoClicked().closeInventory());
                     }
                     return true;
                 }, "Back")

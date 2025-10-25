@@ -58,13 +58,13 @@ public class CsvProvider implements HeadsProvider {
 
     @Override
     public void loadHeads(Consumer<Head> onLoad) {
+        plugin.getLogger().log(Level.INFO, "Loading heads from " + file.getName() + "...");
         int i = 0;
         int failed = 0;
-        try {
-            if (file.exists() && file.isFile()) {
-                CSVReader reader = new CSVReaderBuilder(Files.newBufferedReader(file.toPath()))
-                        .withCSVParser(new CSVParserBuilder().withSeparator(separator).build())
-                        .build();
+        if (file.exists() && file.isFile()) {
+            try (CSVReader reader = new CSVReaderBuilder(Files.newBufferedReader(file.toPath()))
+                    .withCSVParser(new CSVParserBuilder().withSeparator(separator).build())
+                    .build()) {
                 String[] line;
                 while ((line = reader.readNext()) != null) {
                     if (line.length > 3) {
@@ -84,11 +84,11 @@ public class CsvProvider implements HeadsProvider {
                         plugin.getLogger().log(Level.INFO, "Processed " + i + " heads...");
                     }
                 }
-            } else {
-                plugin.getLogger().log(Level.SEVERE, "No heads database file at " + file.getPath() + " found!");
+            } catch (IOException | CsvValidationException e) {
+                e.printStackTrace();
             }
-        } catch (IOException | CsvValidationException e) {
-            e.printStackTrace();
+        } else {
+            plugin.getLogger().log(Level.SEVERE, "No heads database file at " + file.getPath() + " found!");
         }
         plugin.getLogger().log(Level.INFO, "Loaded " + (i - failed) + " heads!" + (failed > 0 ? " " + failed + " failed to load :(" : ""));
     }

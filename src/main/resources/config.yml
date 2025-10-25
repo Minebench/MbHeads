@@ -1,4 +1,8 @@
 providers:
+  json-provider:
+    type: json
+    file: "heads.json"
+    url: "https://raw.githubusercontent.com/TheSilentPro/heads/refs/heads/main/heads.json"
   csv-provider:
     type: csv
     file: "Custom-Head-DB.csv"

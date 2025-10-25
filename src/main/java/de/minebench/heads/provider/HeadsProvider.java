@@ -26,6 +26,7 @@ public interface HeadsProvider {
     void loadHeads(Consumer<Head> onLoad);
 
     public enum Type {
+        JSON,
         CSV;
     }
 }

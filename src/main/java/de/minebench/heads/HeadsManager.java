@@ -29,13 +29,10 @@ import java.util.TreeSet;
 
 public class HeadsManager {
 
-    private final Heads plugin;
-
     private Map<String, Head> heads = new LinkedHashMap<>();
     private Map<String, Category> categories = new TreeMap<>();
 
-    public HeadsManager(Heads plugin, HeadsProvider... providers) {
-        this.plugin = plugin;
+    public HeadsManager(HeadsProvider... providers) {
         for (HeadsProvider provider : providers) {
             provider.loadHeads(head -> {
                 heads.put(head.getId(), head);
